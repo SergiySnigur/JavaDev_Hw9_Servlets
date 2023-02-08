@@ -2,11 +2,11 @@ package servlet.service;
 
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import org.thymeleaf.templateresolver.FileTemplateResolver;
+import org.thymeleaf.templateresolver.WebApplicationTemplateResolver;
 import org.thymeleaf.web.servlet.JavaxServletWebApplication;
 import servlet.settings.TimeZoneQueryParams;
 
-import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
@@ -23,38 +23,36 @@ import java.util.Map;
 @WebServlet(value = "/time")
 public class TimeServlet extends HttpServlet {
     private TemplateEngine engine;
+    private final TimeZoneQueryParams queryParams = new TimeZoneQueryParams();
+    public void init() throws ServletException {
+        ServletContext servletContext = getServletContext();
+        JavaxServletWebApplication application = JavaxServletWebApplication.buildApplication(servletContext);
+        WebApplicationTemplateResolver resolver = new WebApplicationTemplateResolver(application);
 
-    private final TimeZoneQueryParams timeZoneQueryParams = new TimeZoneQueryParams();
-    private String initTime;
-
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-        engine = new TemplateEngine();
-        JavaxServletWebApplication application = JavaxServletWebApplication.buildApplication(config.getServletContext());
-
-        FileTemplateResolver resolver = new FileTemplateResolver();
         resolver.setPrefix("/WEB-INF/templates/");
         resolver.setSuffix(".html");
         resolver.setTemplateMode("HTML5");
-        resolver.setOrder(engine.getTemplateResolvers().size());
         resolver.setCacheable(false);
+
+        engine = new TemplateEngine();
+        resolver.setOrder(engine.getTemplateResolvers().size());
         engine.addTemplateResolver(resolver);
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        ZoneId zid = ZoneId.of(timeZoneQueryParams.parseTimeZone(req));
-        Clock clock = Clock.system(zid);
-        initTime = LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern(
-                "yyyy-MM-dd hh:mm:ss "
-        )) + zid;
-
-        resp.setContentType("text/html");
-        resp.addCookie(new Cookie("lastTimezone", zid.toString()));
+    protected void service(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        ZoneId zoneId = ZoneId.of(queryParams.parseTimeZone(req));
+        Clock clock = Clock.system(zoneId);
+        String time = LocalDateTime.now(clock).format(DateTimeFormatter.
+                ofPattern("yyyy-MM-dd hh:mm:ss ")) + zoneId;
+        resp.setContentType("text/html; charset=utf-8");
 
         Context simpleContext = new Context(
                 req.getLocale(),
-                Map.of("initTime", initTime));
+                Map.of("time", time));
+
+        resp.addCookie(new Cookie("lastTimezone", zoneId.toString()));
 
         engine.process("time", simpleContext, resp.getWriter());
         resp.getWriter().close();

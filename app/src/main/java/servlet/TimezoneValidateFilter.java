@@ -9,33 +9,31 @@ import javax.servlet.http.HttpFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.DateTimeException;
 import java.time.ZoneId;
 
 @WebFilter(value = "/time")
 public class TimezoneValidateFilter extends HttpFilter {
-    private final TimeZoneQueryParams timeZoneUtil = new TimeZoneQueryParams();
+    private final TimeZoneQueryParams queryParams = new TimeZoneQueryParams();
 
-    @Override
     protected void doFilter(HttpServletRequest req,
-                            HttpServletResponse resp,
-                            FilterChain chain) throws IOException, ServletException {
-        boolean validZoneId = true;
+                            HttpServletResponse res,
+                            FilterChain chain) throws ServletException, IOException {
+
+        String timezone = req.getParameter("timezone");
+
+        if (timezone == null || timezone.equals("")) {
+            chain.doFilter(req, res);
+        }
 
         try {
-            ZoneId.of(timeZoneUtil.parseTimeZone(req));
-        } catch (DateTimeException ex) {
-            validZoneId = false;
+            ZoneId.of(timezone.replace(" ", "+"));
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.setContentType("text/html");
+            res.getWriter().write("Invalid timezone!");
+            res.getWriter().close();
         }
 
-        if (validZoneId) {
-            chain.doFilter(req, resp);
-        } else {
-            resp.setStatus(400);
-
-            resp.setContentType("application/json");
-            resp.getWriter().write("Invalid timezone");
-            resp.getWriter().close();
-        }
+        chain.doFilter(req, res);
     }
 }

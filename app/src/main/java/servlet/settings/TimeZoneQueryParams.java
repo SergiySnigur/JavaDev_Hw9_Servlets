@@ -1,9 +1,9 @@
 package servlet.settings;
 
+import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import java.util.stream.Stream;
-
 
 public class TimeZoneQueryParams {
     public String parseTimeZone(HttpServletRequest request) {
@@ -21,3 +21,4 @@ public class TimeZoneQueryParams {
         return result;
     }
 }
+
